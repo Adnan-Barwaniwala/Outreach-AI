@@ -1,0 +1,304 @@
+{
+  "name": "Oltaflock - Stage 5 - Email Sending",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "390456a1-8bb0-4fe8-a06d-5bf8736be82b",
+      "name": "Workflow Input"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();                                                                                                                                       \nconst LIMIT = 500;                                                                                                                                                  \n \n// Persist send count across workflow runs using n8n static data                                                                                                    \nconst staticData = $getWorkflowStaticData('global');                                                                                                              \nconst today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD                                                                                                  \n                                                                                                                                                                  \nif (staticData.date !== today) {                                                                                                                                    \n  staticData.date = today;\n  staticData.sentToday = 0;                                                                                                                                         \n}                                                                                                                                                                 \n\nconst sentToday = staticData.sentToday || 0;\nconst remaining = LIMIT - sentToday;\n                                                                                                                                                                    \nif (remaining <= 0) {\n  throw new Error(`Daily Gmail limit reached. Sent today: ${sentToday}/${LIMIT}. Try again tomorrow.`);                                                             \n}                                                                                                                                                                 \n                                                                                                                                                                    \nconst allowedItems = items.slice(0, remaining);\nstaticData.sentToday = sentToday + allowedItems.length;                                                                                                             \n                                                                                                                                                                  \nreturn allowedItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "b88d3eef-e8fd-4d0b-8dd1-fbaf1cf3515c",
+      "name": "Check Daily Limit"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "d8605315-a559-42ec-a27c-e34cb425f62c",
+      "name": "Split in Batches"
+    },
+    {
+      "parameters": {
+        "amount": "={{ Math.floor(Math.random() * 61) + 30 }}"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1216,
+        144
+      ],
+      "id": "645a38f8-f3a5-4b06-a595-f28ea86b8466",
+      "name": "Wait - Send Delay",
+      "webhookId": "eac411df-9f02-495b-9ab4-5a9775a420cc"
+    },
+    {
+      "parameters": {
+        "sendTo": "=adnanbarwaniwala7@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.generatedBody }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1392,
+        144
+      ],
+      "id": "fade07d5-742f-44a3-a765-bee4e3f98c39",
+      "name": "Send Gmail",
+      "webhookId": "89ab63f6-0476-4adb-9c1b-a9ac974e2cd5",
+      "retryOnFail": false,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "masuWs7H82UZDXXL",
+          "name": "Gmail OAuth2 API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const lead = $('Split in Batches').item.json;                                                                                                                     \nconst gmailResult = $input.item.json;                                                                                                                               \n                                                                                                                                                                  \nlet emailSent, deliveryStatus;\n\nif (gmailResult.id && !gmailResult.error) {                                                                                                                         \n  emailSent = 'Yes';\n  deliveryStatus = 'Delivered';                                                                                                                                     \n} else if (gmailResult.error) {                                                                                                                                   \n  const errorMsg = (gmailResult.error.message || '').toLowerCase();\n  const isDeliveryFailure = /\\b5[0-9]{2}\\b/.test(errorMsg) ||                                                                                                       \n    /recipient|does not exist|no such user|user unknown|mailbox not found|delivery fail/i.test(errorMsg);\n                                                                                                                                                                    \n  if (isDeliveryFailure) {                                                                                                                                        \n    emailSent = 'Yes';                                                                                                                                              \n    deliveryStatus = 'Bounced';                                                                                                                                   \n  } else {                                                                                                                                                          \n    emailSent = 'No';\n    deliveryStatus = 'Undelivered';                                                                                                                                 \n  }                                                                                                                                                               \n} else {\n  emailSent = 'No';\n  deliveryStatus = 'Unknown';\n}                                                                                                                                                                   \n \nreturn {                                                                                                                                                            \n  json: {                                                                                                                                                         \n    batchId: lead.batchId,\n    businessType: lead.businessType,\n    businessName: lead.businessName,\n    location: lead.location,\n    email: lead.email,\n    validationStatus: lead.validationStatus,                                                                                                                        \n    emailSent,\n    deliveryStatus,                                                                                                                                                 \n    dateSent: new Date().toISOString(),                                                                                                                           \n    subject: lead.subject,\n    generatedBody: lead.generatedBody\n  }                                                                                                                                                                 \n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1552,
+        144
+      ],
+      "id": "b4cdf281-e678-42cc-89d9-5e0cdd7b3601",
+      "name": "Parse Send Result"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        -16
+      ],
+      "id": "79fbf642-054e-40f3-80b0-93dc8c8edb98",
+      "name": "Stage 5 Output"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "YOUR_ANTHROPIC_API_KEY"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.apiBody }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        864,
+        144
+      ],
+      "id": "e351cc39-4a50-4fd0-98ce-2a4e1c9adb6d",
+      "name": "Generate Email"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const lead = $('Workflow Input').item.json;\nconst response = $input.item.json;                                                                                                                                  \n                                                                                                                                                                    \nlet text = response.content[0].text.trim();                                                                                                                         \n                                                                                                                                                                    \n// Strip markdown code blocks if Claude wraps the response                                                                                                          \ntext = text.replace(/^```json\\s*/i, '').replace(/^```\\s*/i, '').replace(/```\\s*$/i, '').trim();\n                                                                                                                                                                    \nconst generated = JSON.parse(text);                                                                                                                               \n                                                                                                                                                                    \nreturn {                                                                                                                                                          \n  json: {\n    ...lead,                                                                                                                                                        \n    subject: generated.subject,\n    generatedBody: generated.body                                                                                                                                   \n  }                                                                                                                                                               \n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        144
+      ],
+      "id": "709e766c-eb0d-46d6-9407-e3f504ad1516",
+      "name": "Parse Generated Email"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const item = $input.item.json;\n                                                                                                                                                                    \nreturn {                                                                                                                                                          \n  json: {\n    ...item,                                                                                                                                                        \n    apiBody: JSON.stringify({\n      model: \"claude-haiku-4-5-20251001\",                                                                                                                           \n      max_tokens: 300,                                                                                                                                            \n      system: \"You write short, human cold outreach emails for small businesses. Always return valid JSON with exactly two keys: subject and body. No extra text outside the JSON.\",                                                                                                                                                 \n      messages: [\n        {                                                                                                                                                           \n          role: \"user\",                                                                                                                                           \n          content: `Write a cold email to ${item.businessName}, a ${item.businessType} in ${item.location}. Sign off with the name \"Adnan\". Rules: Subject under 8 words. Body\n   under 100 words. First line must reference this specific business, never generic. One CTA only, a short question or calendar link. Tone: direct, human, no         \n  buzzwords, no mention of AI. Return raw JSON only, no markdown, no code blocks: { \"subject\": \"...\", \"body\": \"...\" }`\n        }                                                                                                                                                           \n      ]                                                                                                                                                           \n    })\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        144
+      ],
+      "id": "cd04afaa-e682-42b7-9c50-7f853277e50b",
+      "name": "Build Prompt"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Workflow Input": {
+      "main": [
+        [
+          {
+            "node": "Check Daily Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Daily Limit": {
+      "main": [
+        [
+          {
+            "node": "Split in Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split in Batches": {
+      "main": [
+        [
+          {
+            "node": "Stage 5 Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait - Send Delay": {
+      "main": [
+        [
+          {
+            "node": "Send Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Gmail": {
+      "main": [
+        [
+          {
+            "node": "Parse Send Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Send Result": {
+      "main": [
+        [
+          {
+            "node": "Split in Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage 5 Output": {
+      "main": [
+        []
+      ]
+    },
+    "Generate Email": {
+      "main": [
+        [
+          {
+            "node": "Parse Generated Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Generated Email": {
+      "main": [
+        [
+          {
+            "node": "Wait - Send Delay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prompt": {
+      "main": [
+        [
+          {
+            "node": "Generate Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4b6Ln2AfynIRU6NC",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "8b4c2ff8-6187-4f07-bebd-809f3eb765f1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e21c9bd66b3e552f6435b52ab36bef4f78075e7ba48e0662de8f10631ff0e382"
+  },
+  "id": "Ii20FznLXN5nmAQq",
+  "tags": []
+}

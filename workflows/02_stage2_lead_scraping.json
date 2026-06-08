@@ -1,0 +1,321 @@
+{
+  "name": "OltaFlock - Stage 2 - Lead Scraping",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "3b21826f-7699-434c-a2a5-ca173f9e3719",
+      "name": "Workflow Input"
+    },
+    {
+      "parameters": {
+        "url": "https://api.app.outscraper.com/maps/search-v3",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "outscraperApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "=query",
+              "value": "={{ $('Workflow Input').first().json.businessType }} in {{ $('Workflow Input').first().json.location }}"
+            },
+            {
+              "name": "limit",
+              "value": "={{ $('Workflow Input').first().json.leadCount }}"
+            },
+            {
+              "name": "async",
+              "value": "false"
+            },
+            {
+              "name": "fields",
+              "value": "name,website,address,phone"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        160,
+        0
+      ],
+      "id": "ad4fb264-b547-4d41-8688-fb5f6720c24d",
+      "name": "Outscraper - Search",
+      "credentials": {
+        "outscraperApi": {
+          "id": "i3ijhF80u5FZWPZn",
+          "name": "Outscraper account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f9d0e337-7579-4048-b59b-872c8187603e",
+              "leftValue": "={{ $json.websiteCount }}",
+              "rightValue": "={{ Math.floor($('Workflow Input').first().json.leadCount * 0.5) }}   ",
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        544,
+        0
+      ],
+      "id": "b7f9172e-4719-4e00-a8d6-7cd73631ca52",
+      "name": "Fallback Check"
+    },
+    {
+      "parameters": {
+        "url": "https://api.app.outscraper.com/maps/search-v3",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "outscraperApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "=query",
+              "value": "={{ $('Workflow Input').first().json.businessType }} near {{ $('Workflow Input').first().json.location }}"
+            },
+            {
+              "name": "limit",
+              "value": "={{ $('Workflow Input').first().json.leadCount }}"
+            },
+            {
+              "name": "async",
+              "value": "false"
+            },
+            {
+              "name": "fields",
+              "value": "name,website,address,phone"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        752,
+        -16
+      ],
+      "id": "45eaaa97-3d19-4415-bd71-432f06885302",
+      "name": "Outscraper - Fallback",
+      "credentials": {
+        "outscraperApi": {
+          "id": "i3ijhF80u5FZWPZn",
+          "name": "Outscraper account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "seen = set()                                                                                                                                                        \ndeduped = []\n                                                                                                                                                                    \nfor item in _items:\n  lead = item[\"json\"]                                                                                                                                             \n  key = (lead.get(\"websiteUrl\") or \"\").lower().strip()                                                                                                          \n  if not key:                                                                                                                                                     \n      key = f\"{lead.get('businessName', '')}|{lead.get('location', '')}\".lower().strip()\n                                                                                                                                                                  \n  if key not in seen:                                                                                                                                             \n      seen.add(key)                                                                                                                                               \n      deduped.append({\"json\": lead})                                                                                                                                                                                                                             \nreturn deduped"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        -16
+      ],
+      "id": "8d80ce17-f6d4-4c2b-827b-080fd8b2ff5f",
+      "name": "Deduplicate"
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "return [item for item in _items if item[\"json\"].get(\"websiteUrl\") or item[\"json\"].get(\"email\")]                                              "
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1328,
+        -16
+      ],
+      "id": "446dc08e-970c-4620-b2fa-87a3b78be810",
+      "name": "Filter - Discard No Contact "
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "item = _items[0][\"json\"]                                                                                   \ndata = item.get(\"data\", [])\n                                                                                                                                                                    \nleads = data[0] if (data and isinstance(data[0], list)) else data\n                                                                                                                                                                    \nnormalized = []                                                                                                                                                   \nfor lead in leads:\n    normalized.append({\n        \"businessName\": lead.get(\"name\"),\n        \"websiteUrl\": lead.get(\"website\"),                                                                                                                          \n        \"location\": lead.get(\"address\"),\n        \"phoneNumber\": lead.get(\"phone\"),                                                                                                                           \n        \"email\": None,                                                                                                                                            \n        \"source\": \"outscraper\"\n    })\n                                                                                                                                                                    \nwebsite_count = sum(1 for l in normalized if l[\"websiteUrl\"])\n                                                                                                                                                                    \nreturn [{\"json\": {\"normalizedLeads\": normalized, \"websiteCount\": website_count}}] "
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        0
+      ],
+      "id": "54a2ec34-048f-4223-9a0f-949b7fabba22",
+      "name": "Count Websites & Normalize                                                                                                                  "
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "leads = _items[0][\"json\"][\"normalizedLeads\"]                                                                                                                      \nreturn [{\"json\": lead} for lead in leads]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        176
+      ],
+      "id": "bcd25438-5146-458f-845c-6f58d8df86c5",
+      "name": "Split Primary Leads"
+    },
+    {
+      "parameters": {
+        "jsCode": "const primaryLeads = $('Count Websites & Normalize                                                                                                                  ').first().json.normalizedLeads;                                                                                            \n                                                                                                                                                                  \nconst data = $input.first().json.data;                                                                                                                              \nconst raw = Array.isArray(data[0]) ? data[0] : data;                                                                                                                \n                                                                                                                                                                \nconst fallbackLeads = raw.map(lead => ({\nbusinessName: lead.name || null,\nwebsiteUrl: lead.website || null,\nlocation: lead.address || null,                                                                                                                                   \nphoneNumber: lead.phone || null,\nemail: null,                                                                                                                                                      \nsource: 'outscraper'                                                                                                                                            \n}));\n\nreturn [...primaryLeads, ...fallbackLeads].map(lead => ({ json: lead }));                                                                                           \n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        -16
+      ],
+      "id": "f8504c60-c213-4280-ab88-1860644344a2",
+      "name": "Combine Primary & Fallback Leads"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Outscraper - Search": {
+      "main": [
+        [
+          {
+            "node": "Count Websites & Normalize                                                                                                                  ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fallback Check": {
+      "main": [
+        [
+          {
+            "node": "Outscraper - Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split Primary Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outscraper - Fallback": {
+      "main": [
+        [
+          {
+            "node": "Combine Primary & Fallback Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate": {
+      "main": [
+        [
+          {
+            "node": "Filter - Discard No Contact ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count Websites & Normalize                                                                                                                  ": {
+      "main": [
+        [
+          {
+            "node": "Fallback Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Primary Leads": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Primary & Fallback Leads": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Input": {
+      "main": [
+        [
+          {
+            "node": "Outscraper - Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter - Discard No Contact ": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "860a0cd2-cdb9-411f-bdd0-2064bebe5900",
+  "meta": {
+    "instanceId": "e21c9bd66b3e552f6435b52ab36bef4f78075e7ba48e0662de8f10631ff0e382"
+  },
+  "id": "UsjayDJdEm2jtasm",
+  "tags": []
+}

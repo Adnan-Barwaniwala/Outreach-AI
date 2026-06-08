@@ -1,0 +1,398 @@
+{
+  "name": "OltaFlock - Stage 1 - Form Submission",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "64f8faf4-f382-4e5d-b507-368a16b793a8",
+              "name": "businessType",
+              "value": "={{ $json.body.data.fields[0].value }}",
+              "type": "string"
+            },
+            {
+              "id": "fa00794c-c0b3-43c9-9edb-171236cdd94d",
+              "name": "location",
+              "value": "={{ $json.body.data.fields[1].value }}",
+              "type": "string"
+            },
+            {
+              "id": "d1fa3696-0fde-485c-8c4e-0df2bd5fbbe7",
+              "name": "leadCount",
+              "value": "={{ $json.body.data.fields[2].value }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        128,
+        0
+      ],
+      "id": "1aa2833f-3a7f-49a3-b30d-3234c3839b0b",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e72aaadf-6680-44bf-9b48-bbcb93f37420",
+              "leftValue": "={{ $json.leadCount }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "af9b5376-bf96-412f-9866-a9329d48ac90",
+              "leftValue": "={{ $json.location }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "c48a7e23-a557-4577-84ae-c137854d4c5f",
+              "leftValue": "={{ $json.businessType }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        320,
+        0
+      ],
+      "id": "9b496037-600f-4939-a91d-ca8088cfc28a",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "404f76ef-d3c7-4e61-8868-2a03e5cc775e",
+              "name": "error",
+              "value": "Invalid payload received",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        528,
+        176
+      ],
+      "id": "017d3c01-1360-439c-aef6-19015195b904",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "stage1-submit",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -80,
+        0
+      ],
+      "id": "5e9a9942-15b1-4c18-b4a3-0e95e15764d0",
+      "name": "Tally Webhook",
+      "webhookId": "0629ccd7-e084-4975-9025-1368097a11c0"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UsjayDJdEm2jtasm",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UsjayDJdEm2jtasm",
+          "cachedResultName": "OltaFlock - Stage 2 - Lead Scraping"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        528,
+        -16
+      ],
+      "id": "4650e23f-d734-4ed0-b442-822e8be9ea35",
+      "name": "Stage 2 - Lead Scraping"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "oQ41Cj6SY5CIDkhy",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/oQ41Cj6SY5CIDkhy",
+          "cachedResultName": "OltaFlock - Stage 3 - Email Extraction"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        736,
+        -16
+      ],
+      "id": "34fbb4e4-a89a-4506-b188-73d6c893a5c5",
+      "name": "Stage 3 - Email Extraction"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "cRvZXeviJmVOkDo9",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/cRvZXeviJmVOkDo9",
+          "cachedResultName": "OltaFlock - Stage 4 - Email Validation"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1152,
+        -16
+      ],
+      "id": "ecf47512-d57d-4721-b817-fc2784ab6652",
+      "name": "Stage 4 - Email Validation"
+    },
+    {
+      "parameters": {
+        "jsCode": "const batchId = `batch_${Date.now()}`;                                                                                                                              \nconst webhookData = $('Edit Fields').first().json;                                                                                                                      \nreturn $input.all().map(item => ({                                                                                                                                  \n  json: {                                                                                                                                                           \n    batchId,                                                                                                                                                      \n    businessType: webhookData.businessType,\n    requestedLeadCount: webhookData.leadCount,                                                                                                                      \n    ...item.json                                                                                                                                                    \n  }                                                                                                                                                                 \n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        -16
+      ],
+      "id": "69ca3b2d-1bba-4b16-89ce-fcb9c9725d52",
+      "name": "Prepare Stage 4 Input"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Ii20FznLXN5nmAQq",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Ii20FznLXN5nmAQq",
+          "cachedResultName": "Oltaflock - Stage 5 - Email Sending"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1360,
+        -16
+      ],
+      "id": "61bd944d-5acb-4321-8bf4-35045e197fd5",
+      "name": "Stage 5 - Email Sending"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "oVJ2mzyDGsV5tIf3",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/oVJ2mzyDGsV5tIf3",
+          "cachedResultName": "Oltaflock - Stage 6 - Logging & Alerts"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1568,
+        -16
+      ],
+      "id": "ebb27c23-3206-4a21-ac86-e710e3e5901c",
+      "name": "Stage 6 - Logging & Alerts"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Stage 2 - Lead Scraping",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tally Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage 2 - Lead Scraping": {
+      "main": [
+        [
+          {
+            "node": "Stage 3 - Email Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage 3 - Email Extraction": {
+      "main": [
+        [
+          {
+            "node": "Prepare Stage 4 Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Stage 4 Input": {
+      "main": [
+        [
+          {
+            "node": "Stage 4 - Email Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage 4 - Email Validation": {
+      "main": [
+        [
+          {
+            "node": "Stage 5 - Email Sending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage 5 - Email Sending": {
+      "main": [
+        [
+          {
+            "node": "Stage 6 - Logging & Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "6ac5f87e-65be-4471-bf70-cced99e65768",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e21c9bd66b3e552f6435b52ab36bef4f78075e7ba48e0662de8f10631ff0e382"
+  },
+  "id": "ImWy2ir2dGcn5WEr",
+  "tags": []
+}

@@ -1,0 +1,440 @@
+{
+  "name": "OltaFlock - Stage 4 - Email Validation",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "681c3afc-d0fe-4a64-b071-087cd9c94ed9",
+      "name": "Workflow Input"
+    },
+    {
+      "parameters": {
+        "url": "https://emailverifier.reoon.com/api/v1/verify ",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "key",
+              "value": "yh3IajBExt60gD0T1eVn7cg1Oaf1KOyb"
+            },
+            {
+              "name": "mode",
+              "value": "power"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "a0790020-bd1f-46fd-8ea1-f5857c77dccb",
+      "name": "Validate Email"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const lead = $('Workflow Input').item.json;                                                                                                        \nconst raw = $input.item.json.status || 'unknown';                                                                                                  \n                                                                                                                                                   \nconst statusMap = {                                                                                                                                \n  safe:        'valid',                                                                                                                            \n  role_account:'valid',                                                                                                                            \n  catch_all:   'catch-all',                                                                                                                      \n  invalid:     'discard',                                                                                                                          \n  disabled:    'discard',\n  inbox_full:  'discard',                                                                                                                          \n  disposable:  'discard',                                                                                                                        \n  spamtrap:    'discard',                                                                                                                          \n  unknown:     'unknown'                                                                                                                           \n};\n                                                                                                                                                   \nreturn {                                                                                                                                         \n  json: {\n    ...lead,\n    validationProvider: 'reoon',\n    validationRawStatus: raw,                                                                                                                      \n    validationStatus: statusMap[raw] || 'discard'\n  }                                                                                                                                                \n}; "
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "86c50c5d-6666-4393-a4d3-8d9e714f6f45",
+      "name": "Parse Validation Result"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().filter(item => item.json.validationStatus !== 'unknown');"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        608,
+        192
+      ],
+      "id": "801dce0e-e9ad-4084-81e2-20ba9e7d47b8",
+      "name": "Known Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().filter(item => item.json.validationStatus === 'unknown');"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        608,
+        0
+      ],
+      "id": "9be869fa-fc99-4ec6-bdb8-b34c2c9edd93",
+      "name": "Unknown Results"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        800,
+        0
+      ],
+      "id": "0ce3ec16-29b2-418a-a2a8-8cabb763db37",
+      "name": "Wait 5s - Retry Delay",
+      "webhookId": "e7ed319e-82e3-4783-bcb4-d0b644033d68"
+    },
+    {
+      "parameters": {
+        "url": "https://emailverifier.reoon.com/api/v1/verify",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "key",
+              "value": "yh3IajBExt60gD0T1eVn7cg1Oaf1KOyb"
+            },
+            {
+              "name": "mode",
+              "value": "power"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1008,
+        0
+      ],
+      "id": "e0d6c78c-1268-4123-b177-83b0743d3000",
+      "name": "Retry Unknown"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const lead = $('Unknown Results').item.json;\nconst raw = $input.item.json.status || 'unknown';\n\nconst statusMap = {\n  safe:         'valid',\n  role_account: 'valid',\n  catch_all:    'catch-all',\n  invalid:      'discard',\n  disabled:     'discard',\n  inbox_full:   'discard',\n  disposable:   'discard',\n  spamtrap:     'discard',\n  unknown:      'discard'   // still unknown after retry → discard\n};\n\nreturn {\n  json: {\n    ...lead,\n    validationProvider: 'reoon',\n    validationRawStatus: raw,\n    validationStatus: statusMap[raw] || 'discard'\n  }\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        0
+      ],
+      "id": "82348fde-9144-43cf-a461-ff4528d957b4",
+      "name": "Parse Retry Result"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1392,
+        16
+      ],
+      "id": "eed9da40-b118-4c7b-91cc-1257bcff4389",
+      "name": "Merge Validation Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "const all = $input.all().map(i => i.json);                                                                                                                          \nconst inputCount = all.length;                                                                                                                                      \n                                                                                                                                                                    \nconst valid = all.filter(i => i.validationStatus === 'valid');\nconst catchAll = all.filter(i => i.validationStatus === 'catch-all');                                                                                               \nconst discarded = all.filter(i => i.validationStatus === 'discard');                                                                                                \n \n// Catch-all cap: max 30% of sendable batch                                                                                                                         \nconst maxCatchAll = Math.floor((3 * valid.length) / 7);                                                                                                           \nconst cappedCatchAll = catchAll.slice(0, maxCatchAll);                                                                                                              \n                                                                                                                                                                  \nconst sendable = [...valid, ...cappedCatchAll];                                                                                                                     \n                                                                                                                                                                  \nconst requestedLeadCount = all[0]?.requestedLeadCount || 0;                                                                                                         \nconst sopRate = requestedLeadCount > 0 ? sendable.length / requestedLeadCount : 0;                                                                                \nconst qualityRate = inputCount > 0 ? sendable.length / inputCount : 0;                                                                                              \n                                                                                                                                                                    \nconst summary = {                                                                                                                                                   \n  batchId: all[0]?.batchId,                                                                                                                                         \n  requestedLeadCount,                                                                                                                                               \n  stage4InputCount: inputCount,\n  validCount: valid.length,                                                                                                                                         \n  catchAllCount: cappedCatchAll.length,                                                                                                                           \n  catchAllUncapped: catchAll.length,                                                                                                                                \n  discardedCount: discarded.length,\n  sendableCount: sendable.length,                                                                                                                                   \n  sopRate: Math.round(sopRate * 100) / 100,                                                                                                                         \n  qualityRate: Math.round(qualityRate * 100) / 100,\n  gatePassed: sopRate >= 0.80                                                                                                                                       \n};                                                                                                                                                                  \n \n// Guard: if nothing is sendable, return one item so the False branch can fire                                                                                      \nif (sendable.length === 0) {                                                                                                                                      \n  return [{ json: { _summary: summary } }];                                                                                                                         \n}                                                                                                                                                                 \n                                                                                                                                                                    \nreturn sendable.map(item => ({                                                                                                                                      \n  json: { ...item, _summary: summary }\n})); "
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        16
+      ],
+      "id": "083c0dff-e82a-4af7-bacc-4fd9d0342f56",
+      "name": "Apply Cap and Build Summary"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b60d2a36-0e64-475f-8899-026d097702e5",
+              "leftValue": "={{ $json._summary.gatePassed }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1776,
+        16
+      ],
+      "id": "589260fe-2150-4a5b-8b73-30dd4c5b341d",
+      "name": "Quality Gate"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {                                                                                                                                   \n  const { _summary, ...rest } = item.json;                                                                                                                          \n  return { json: rest };                                                                                                                                            \n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1984,
+        0
+      ],
+      "id": "dc08210a-ef82-4a57-bab6-a9095b0d3850",
+      "name": "Stage 4 Output"
+    },
+    {
+      "parameters": {
+        "jsCode": "const summary = $input.first().json._summary;                                                                                                                                                                               \nconst sopPct = Math.round(summary.sopRate * 100);                                                                                                                   \nconst qualityPct = Math.round(summary.qualityRate * 100);                                                                                                           \nconst isAttritionFailure = summary.stage4InputCount < summary.requestedLeadCount * 0.80 && qualityPct >= 80;                                                        \n                                                                                                                                                                    \nconst cause = isAttritionFailure\n  ? `Likely cause: pipeline attrition. Only ${summary.stage4InputCount} of ${summary.requestedLeadCount} requested leads reached Stage 4. Email quality was         \n${qualityPct}% — acceptable. Consider re-running with a higher lead count.`                                                                                         \n  : `Likely cause: low email quality. Only ${qualityPct}% of Stage 4 leads validated as sendable.`;\n                                                                                                                                                                    \nconst body = `Stage 4 Quality Gate FAILED — campaign blocked.                                                                                                       \n                                                                                                                                                                    \nBatch ID: ${summary.batchId}                                                                                                                                        \nRequested leads: ${summary.requestedLeadCount}                                                                                                                    \nReceived by Stage 4: ${summary.stage4InputCount}                                                                                                                    \nSendable (valid + catch-all): ${summary.sendableCount}\n                                                                                                                                                                    \nGate: ${sopPct}% (sendable ÷ requested) — threshold: 80% — FAILED                                                                                                   \nQuality-only rate: ${qualityPct}% (sendable ÷ Stage 4 input)                                                                                                        \n                                                                                                                                                                    \nBreakdown:                                                                                                                                                        \n  Valid: ${summary.validCount}                                                                                                                                      \n  Catch-all: ${summary.catchAllCount} (${summary.catchAllUncapped} before cap)                                                                                      \n  Discarded: ${summary.discardedCount}\n                                                                                                                                                                    \n${cause}                                                                                                                                                            \n \nNo emails were sent.`;                                                                                                                                              \n                                                                                                                                                                  \nreturn [{ json: { subject: `[OltaFlock] Validation failed – ${summary.batchId}`, body } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1968,
+        160
+      ],
+      "id": "65ebc365-256a-4c46-a625-d3d6d9538b14",
+      "name": "Build Fail Alert"
+    },
+    {
+      "parameters": {
+        "sendTo": "adnanbarwaniwala7@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}   ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2176,
+        160
+      ],
+      "id": "50366740-1401-4534-9111-8fb348f5e193",
+      "name": "Send Fail Alert",
+      "webhookId": "fd91f10d-81ed-4900-a6df-23d239a8dd86",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "masuWs7H82UZDXXL",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "throw new Error('Quality gate failed — campaign blocked. Alert sent to operator.');"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2384,
+        160
+      ],
+      "id": "7f9f6e03-aa44-4217-a271-fe1e12f6560a",
+      "name": "Halt Pipeline"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Workflow Input": {
+      "main": [
+        [
+          {
+            "node": "Validate Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Email": {
+      "main": [
+        [
+          {
+            "node": "Parse Validation Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Validation Result": {
+      "main": [
+        [
+          {
+            "node": "Unknown Results",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Known Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unknown Results": {
+      "main": [
+        [
+          {
+            "node": "Wait 5s - Retry Delay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5s - Retry Delay": {
+      "main": [
+        [
+          {
+            "node": "Retry Unknown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry Unknown": {
+      "main": [
+        [
+          {
+            "node": "Parse Retry Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Retry Result": {
+      "main": [
+        [
+          {
+            "node": "Merge Validation Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Known Results": {
+      "main": [
+        [
+          {
+            "node": "Merge Validation Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Validation Results": {
+      "main": [
+        [
+          {
+            "node": "Apply Cap and Build Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Cap and Build Summary": {
+      "main": [
+        [
+          {
+            "node": "Quality Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quality Gate": {
+      "main": [
+        [
+          {
+            "node": "Stage 4 Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Fail Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Fail Alert": {
+      "main": [
+        [
+          {
+            "node": "Send Fail Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Fail Alert": {
+      "main": [
+        [
+          {
+            "node": "Halt Pipeline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "5b422656-076b-4c50-96f9-c096549a8658",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e21c9bd66b3e552f6435b52ab36bef4f78075e7ba48e0662de8f10631ff0e382"
+  },
+  "id": "cRvZXeviJmVOkDo9",
+  "tags": []
+}

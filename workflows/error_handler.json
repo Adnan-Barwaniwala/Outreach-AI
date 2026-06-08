@@ -1,0 +1,90 @@
+{
+  "name": "Oltalflock - Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "1eea25df-228b-440f-90f2-19eb5876876c",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const err = $input.first().json;                                                                                                                                    \nreturn [{                                                                                                                                                           \n  json: {\n    subject: `WORKFLOW ERROR — ${err.workflow?.name ?? 'Unknown Workflow'}`,                                                                                        \n    body: `OltaFlock Error Alert\\n\\nWorkflow: ${err.workflow?.name}\\nNode: ${err.execution?.lastNodeExecuted}\\nError: ${err.execution?.error?.message}\\n\\nExecution \nID: ${err.execution?.id}\\nTime: ${new Date().toISOString()}\\n\\nCheck n8n for full details.`                                                                         \n  }                                                                                                                                                                 \n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "28bbe0dc-dcfa-4fa4-b988-e78d4e35ddf0",
+      "name": "Build Error Alert"
+    },
+    {
+      "parameters": {
+        "sendTo": "adnanbarwaniwala7@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "d73cdaeb-1540-49c4-b6e6-95431a966248",
+      "name": "Send Error Alert",
+      "webhookId": "6dbaa728-d3f9-4613-a369-7804946b7cf0",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "masuWs7H82UZDXXL",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Error Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Error Alert": {
+      "main": [
+        [
+          {
+            "node": "Send Error Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "29907a93-8e34-44fc-a5a6-47cc79940557",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e21c9bd66b3e552f6435b52ab36bef4f78075e7ba48e0662de8f10631ff0e382"
+  },
+  "id": "4b6Ln2AfynIRU6NC",
+  "tags": []
+}

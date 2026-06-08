@@ -1,0 +1,272 @@
+{
+  "name": "OltaFlock - Stage 3 - Email Extraction",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "61cbd69f-2939-44ad-a667-d6b8e5605d72",
+      "name": "Workflow Input"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const url = ($json.websiteUrl || '')                                                                                                                                \n    .replace(/^https?:\\/\\//, '')                                                                                                                                    \n    .replace(/^www\\./, '')                                                                                                                                            \n    .split('/')[0]\n    .split('?')[0]                                                                                                                                                    \n    .trim();                                                                                                                                                        \n                                                                                                                                                                      \nreturn {\njson: {                                                                                                                                                           \n    ...$json,                                                                                                                                                     \n    domain: url\n}\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "9756b97c-f317-4ae6-8725-412bdf196c5c",
+      "name": "Extract Domain"
+    },
+    {
+      "parameters": {
+        "url": "https://api.hunter.io/v2/domain-search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "domain",
+              "value": "={{ $json.domain }}"
+            },
+            {
+              "name": "api_key",
+              "value": "YOUR_HUNTER_API_KEY"
+            },
+            {
+              "name": "limit",
+              "value": "3"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        560,
+        0
+      ],
+      "id": "408981f5-a60a-4878-910d-c94f1010c28c",
+      "name": "Hunter.io - Domain Search"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const lead = $('Extract Domain').item.json;                                                                                                                         \nconst emails = $json.data?.emails || [];                                                                                                                            \n\n// Personal type first, then highest confidence                                                                                                                     \nconst sorted = [...emails].sort((a, b) => {                                                                                                                       \nif (a.type === 'personal' && b.type !== 'personal') return -1;                                                                                                    \nif (b.type === 'personal' && a.type !== 'personal') return 1;                                                                                                   \nreturn (b.confidence || 0) - (a.confidence || 0);                                                                                                                 \n});\n                                                                                                                                                                    \nconst best = sorted[0];                                                                                                                                             \n\nreturn {                                                                                                                                                            \n    json: {                                                                                                                \n        businessName: lead.businessName,\n        websiteUrl: lead.websiteUrl,\n        location: lead.location,\n        phoneNumber: lead.phoneNumber,\n        source: lead.source,                                                                                                                                            \n        domain: lead.domain,\n        email: best?.value || null,                                                                                                                                     \n        emailSource: best ? 'hunter' : null                                                                                                                             \n    }\n}; "
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        0
+      ],
+      "id": "1adcd606-5d94-418a-ba01-b2f07eac5f0f",
+      "name": "Parse Hunter.io Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().filter(item => item.json.email !== null);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        176
+      ],
+      "id": "96fa1b5d-1e11-4816-8d48-0c3c30edb20f",
+      "name": "Hunter Found"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().filter(item => item.json.email === null);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        0
+      ],
+      "id": "ed5db903-7295-472f-a2e5-05f3d99c5d3f",
+      "name": "Hunter Not Found"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const domain = ($json.domain || '').trim();\nconst email = domain ? `info@${domain}` : null;\n\nreturn {\njson: {\n    businessName: $json.businessName,\n    websiteUrl: $json.websiteUrl,\n    location: $json.location,\n    phoneNumber: $json.phoneNumber ?? null,\n    source: $json.source,\n    email,\n    emailSource: email ? 'pattern' : null\n}\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        0
+      ],
+      "id": "6edab4f1-7c54-4981-a368-eb7ebe3d2d3f",
+      "name": "Pattern Generator"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => ({\n  json: {\n    businessName: item.json.businessName,\n    websiteUrl: item.json.websiteUrl,\n    location: item.json.location,\n    phoneNumber: item.json.phoneNumber ?? null,\n    source: item.json.source,\n    email: item.json.email,\n    emailSource: item.json.emailSource\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        16
+      ],
+      "id": "b91f0744-c1c2-42f1-8a19-cd8752d251a4",
+      "name": "Stage 3 Output"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1344,
+        16
+      ],
+      "id": "0f97371c-b386-48a9-8eea-6be651af7330",
+      "name": "Merge Emails"
+    },
+    {
+      "parameters": {
+        "jsCode": "const blockedDomains = new Set([\n  'instagram.com',\n  'www.instagram.com',\n  'facebook.com',\n  'www.facebook.com',\n  'fb.com',\n  'www.fb.com',\n  'twitter.com',\n  'www.twitter.com',\n  'x.com',\n  'www.x.com',\n  'linkedin.com',\n  'www.linkedin.com',\n  'youtube.com',\n  'www.youtube.com',\n  'tiktok.com',\n  'www.tiktok.com'\n]);\n\nreturn $input.all().filter(item => {\n  const domain = String(item.json.domain || '').toLowerCase().trim();\n  return domain && !blockedDomains.has(domain);\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        0
+      ],
+      "id": "237d60ac-1ef0-47d6-bafd-e0c5bb111d30",
+      "name": "Filter Social Domains"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Workflow Input": {
+      "main": [
+        [
+          {
+            "node": "Extract Domain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Domain": {
+      "main": [
+        [
+          {
+            "node": "Filter Social Domains",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hunter.io - Domain Search": {
+      "main": [
+        [
+          {
+            "node": "Parse Hunter.io Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Hunter.io Results": {
+      "main": [
+        [
+          {
+            "node": "Hunter Not Found",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Hunter Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hunter Not Found": {
+      "main": [
+        [
+          {
+            "node": "Pattern Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pattern Generator": {
+      "main": [
+        [
+          {
+            "node": "Merge Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hunter Found": {
+      "main": [
+        [
+          {
+            "node": "Merge Emails",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Emails": {
+      "main": [
+        [
+          {
+            "node": "Stage 3 Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Social Domains": {
+      "main": [
+        [
+          {
+            "node": "Hunter.io - Domain Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a21c7066-68e6-427b-8195-39dd72d71819",
+  "meta": {
+    "instanceId": "e21c9bd66b3e552f6435b52ab36bef4f78075e7ba48e0662de8f10631ff0e382"
+  },
+  "id": "oQ41Cj6SY5CIDkhy",
+  "tags": []
+}

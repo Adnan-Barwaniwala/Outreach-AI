@@ -1,0 +1,357 @@
+{
+  "name": "Oltaflock - Stage 6 - Logging & Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "38a8b6fa-43f0-4efb-a204-b21ec0b3ebf5",
+      "name": "Workflow Input"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1nxRBgQ3deKcxODh4DFS0j7tI5Aua41YoPW0FhOD2slY",
+          "mode": "list",
+          "cachedResultName": "Oltaflock Project",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1nxRBgQ3deKcxODh4DFS0j7tI5Aua41YoPW0FhOD2slY/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1nxRBgQ3deKcxODh4DFS0j7tI5Aua41YoPW0FhOD2slY/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Business Name": "={{ $json.businessName }}",
+            "Location": "={{ $json.location }}",
+            "Business Type": "={{ $json.businessType }}",
+            "Email Address": "={{ $json.email }}",
+            "Validation Status": "={{ $json.validationStatus }}",
+            "Email Sent": "={{ $json.emailSent }} ",
+            "Delivery Status": "={{ $json.deliveryStatus }}",
+            "Date Sent": "={{ $json.dateSent }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Business Name",
+              "displayName": "Business Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Business Type",
+              "displayName": "Business Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email Address",
+              "displayName": "Email Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Validation Status",
+              "displayName": "Validation Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email Sent",
+              "displayName": "Email Sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Delivery Status",
+              "displayName": "Delivery Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date Sent",
+              "displayName": "Date Sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        0
+      ],
+      "id": "792765b0-fa81-4d1b-be6d-35baeb502246",
+      "name": "Append to Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "fVXjcc6t0OdaHCoA",
+          "name": "Google Sheets OAuth2 API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $('Workflow Input').all();\nconst totalLeads = items.length;\nconst emailsSent = items.filter(i => i.json.emailSent === 'Yes').length;\nconst delivered = items.filter(i => i.json.deliveryStatus === 'Delivered').length;\nconst bounced = items.filter(i => i.json.deliveryStatus === 'Bounced').length;\nconst undelivered = items.filter(i => i.json.deliveryStatus === 'Undelivered').length;\nconst unknown = items.filter(i => i.json.deliveryStatus === 'Unknown').length;\n\nconst bounceRate = emailsSent > 0 ? bounced / emailsSent : 0;\nconst deliveryRate = emailsSent > 0 ? delivered / emailsSent : 0;\n\nconst batchId = items[0]?.json.batchId ?? 'unknown';\n\nreturn [{\n  json: {\n    batchId,\n    totalLeads,\n    emailsSent,\n    delivered,\n    bounced,\n    undelivered,\n    unknown,\n    bounceRate,\n    deliveryRate\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "4cccd77b-f770-482a-9e36-ea3003f2b25e",
+      "name": "Compute Bounce Rate"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a7566c90-3bfc-4833-8251-3fc5188d0bcc",
+              "leftValue": "={{ $json.bounceRate }}",
+              "rightValue": 0.05,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        624,
+        0
+      ],
+      "id": "e9a42c95-522d-4be0-a9ad-ad8e57c6d1eb",
+      "name": "Bounce Rate Check"
+    },
+    {
+      "parameters": {
+        "jsCode": "const stats = $input.first().json;                                                                                                                                     \nconst bouncePercent = (stats.bounceRate * 100).toFixed(1);                                                                                                        \nconst deliveryPercent = (stats.deliveryRate * 100).toFixed(1);\n                                                                                                                                                                    \nreturn [{\n  json: {                                                                                                                                                           \n    subject: `ALERT: High Bounce Rate — Batch ${stats.batchId}`,                                                                                                  \n    body: `OltaFlock Campaign Alert\\n\\nBatch ID: ${stats.batchId}\\nStatus: PAUSED — Bounce rate exceeded 5%\\n\\nStats:\\n- Total leads processed: \n${stats.totalLeads}\\n- Emails sent: ${stats.emailsSent}\\n- Delivered: ${stats.delivered} (${deliveryPercent}%)\\n- Bounced: ${stats.bounced} (${bouncePercent}%)\\n-  \nUndelivered: ${stats.undelivered}\\n- Unknown: ${stats.unknown}\\n\\nAction required: Review the Google Sheet log for this batch and investigate bounce sources before \nresuming.`                                                                                                                                                          \n  }                                                                                                                                                                 \n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        -16
+      ],
+      "id": "81b98d88-d36a-4b4c-b1dd-9ceed3b08b17",
+      "name": "Build Bounce Alert"
+    },
+    {
+      "parameters": {
+        "jsCode": "const stats = $input.first().json;\nconst bouncePercent = (stats.bounceRate * 100).toFixed(1);\nconst deliveryPercent = (stats.deliveryRate * 100).toFixed(1);                                                                                                      \n                                                              \nreturn [{                                                                                                                                                           \n  json: {                                                                                                                                                         \n    subject: `Campaign Complete — Batch ${stats.batchId}`,\n    body: `OltaFlock Campaign Summary\\n\\nBatch ID: ${stats.batchId}\\nStatus: COMPLETE\\n\\nResults:\\n- Total leads processed: ${stats.totalLeads}\\n- Emails sent:     \n${stats.emailsSent}\\n- Delivered: ${stats.delivered} (${deliveryPercent}%)\\n- Bounced: ${stats.bounced} (${bouncePercent}%)\\n- Undelivered: ${stats.undelivered}\\n- \nUnknown: ${stats.unknown}\\n\\nAll results have been logged to the OltaFlock Google Sheet.`                                                                           \n  }                                                                                                                                                               \n}];   "
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        144
+      ],
+      "id": "18c4f42f-7eb2-4175-9751-56d6e85838c7",
+      "name": "Build Completion Summary"
+    },
+    {
+      "parameters": {
+        "sendTo": "adnanbarwaniwala7@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1040,
+        -16
+      ],
+      "id": "76039a8b-4a11-4dae-abb0-ab95206d7e9f",
+      "name": "Send Bounce Alert",
+      "webhookId": "e43083d4-756b-48d7-9e82-6b10836e4949",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "masuWs7H82UZDXXL",
+          "name": "Gmail OAuth2 API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "sendTo": "adnanbarwaniwala7@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1040,
+        160
+      ],
+      "id": "7248b4bb-943e-4014-93db-23eb7aee3b5d",
+      "name": "Send Completion Summary",
+      "webhookId": "0994c22d-ddd0-4563-9744-126dcf38d971",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "masuWs7H82UZDXXL",
+          "name": "Gmail OAuth2 API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Workflow Input": {
+      "main": [
+        [
+          {
+            "node": "Append to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Compute Bounce Rate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Bounce Rate": {
+      "main": [
+        [
+          {
+            "node": "Bounce Rate Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bounce Rate Check": {
+      "main": [
+        [
+          {
+            "node": "Build Bounce Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Completion Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Bounce Alert": {
+      "main": [
+        [
+          {
+            "node": "Send Bounce Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Completion Summary": {
+      "main": [
+        [
+          {
+            "node": "Send Completion Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "4b6Ln2AfynIRU6NC",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "153f468d-0c49-4886-b8b4-b24a51ee266e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e21c9bd66b3e552f6435b52ab36bef4f78075e7ba48e0662de8f10631ff0e382"
+  },
+  "id": "oVJ2mzyDGsV5tIf3",
+  "tags": []
+}
